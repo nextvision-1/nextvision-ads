@@ -16,34 +16,53 @@ import os
 import sys
 from pathlib import Path
 
-# --- .env 로드 ---
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    print('[오류] python-dotenv 가 설치되어 있지 않아요.')
-    print('       설치: pip install python-dotenv')
-    sys.exit(1)
-
+# --- .env 또는 Streamlit Cloud Secrets 로드 ---
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / '.env'
 
-if not ENV_PATH.exists():
-    print(f'[오류] .env 파일을 찾을 수 없어요: {ENV_PATH}')
-    print('       .env.example 을 복사해서 .env 로 만들고 실제 값을 채워주세요.')
-    sys.exit(1)
+# Streamlit Cloud 환경 감지
+_is_streamlit_cloud = False
+try:
+    import streamlit as st
+    if hasattr(st, 'secrets') and len(st.secrets) > 0:
+        _is_streamlit_cloud = True
+except Exception:
+    pass
 
-load_dotenv(dotenv_path=ENV_PATH)
+if not _is_streamlit_cloud:
+    # 로컬 환경: .env 파일에서 읽기
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        print('[오류] python-dotenv 가 설치되어 있지 않아요.')
+        print('       설치: pip install python-dotenv')
+        sys.exit(1)
+
+    if not ENV_PATH.exists():
+        print(f'[오류] .env 파일을 찾을 수 없어요: {ENV_PATH}')
+        print('       .env.example 을 복사해서 .env 로 만들고 실제 값을 채워주세요.')
+        sys.exit(1)
+
+    load_dotenv(dotenv_path=ENV_PATH)
+
+
+def _get_config(key: str, default: str = '') -> str:
+    """Streamlit Cloud secrets 또는 환경변수에서 값을 읽어옵니다."""
+    if _is_streamlit_cloud:
+        return st.secrets.get(key, default)
+    return os.getenv(key, default)
+
 
 # --- 메타 설정 ---
-ACCESS_TOKEN = os.getenv('META_ACCESS_TOKEN')
-AD_ACCOUNT_ID = os.getenv('META_AD_ACCOUNT_ID')
-PAGE_ID = os.getenv('META_PAGE_ID')
-SYSTEM_USER_ID = os.getenv('META_SYSTEM_USER_ID')
-APP_ID = os.getenv('META_APP_ID')
-DEFAULT_LANDING_URL = os.getenv('DEFAULT_LANDING_URL', 'https://nextvision.io.kr')
+ACCESS_TOKEN = _get_config('META_ACCESS_TOKEN')
+AD_ACCOUNT_ID = _get_config('META_AD_ACCOUNT_ID')
+PAGE_ID = _get_config('META_PAGE_ID')
+SYSTEM_USER_ID = _get_config('META_SYSTEM_USER_ID')
+APP_ID = _get_config('META_APP_ID')
+DEFAULT_LANDING_URL = _get_config('DEFAULT_LANDING_URL', 'https://nextvision.io.kr')
 
 # --- OpenAI 설정 (이미지 생성용) ---
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '').strip()
+OPENAI_API_KEY = _get_config('OPENAI_API_KEY').strip()
 
 # --- 파일 경로 설정 ---
 AD_IMAGE_DIR = Path(os.getenv('AD_IMAGE_DIR', './ad_images'))
