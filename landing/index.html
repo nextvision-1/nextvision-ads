@@ -748,8 +748,8 @@
             const phone = document.getElementById('phone').value.trim();
             const url = document.getElementById('url').value.trim();
 
-            if (!name || !phone) {
-                alert('이름과 연락처를 입력해주세요.');
+            if (!name || !phone || !url) {
+                alert('모든 항목을 입력해주세요.');
                 return;
             }
 
@@ -757,11 +757,10 @@
             btn.textContent = '전송 중...';
 
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
+                const params = new URLSearchParams({ name, phone, url });
+                await fetch(GOOGLE_SCRIPT_URL + '?' + params.toString(), {
+                    method: 'GET',
                     mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, phone, url }),
                 });
 
                 // 성공 화면 표시
